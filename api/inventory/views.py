@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from .models import Product
+from .models import Product,Purchase,Sales
 from django.db.models import F, Value,Sum
 from django.db.models.functions import Coalesce
 from api.inventory.exception import BusinessException
@@ -22,7 +22,7 @@ class InventoryView(APIView):
         else:
             #UNIONするために、それぞれフィールド名を再定義している
             purchase = Purchase.objects.filter(product_id=id).prefetch_related('product').valuews("id","quantity",type=Value('1'),date=F('purchase_date'),unit=F('product__price'))
-            salse = Sales.objects.filter(product_id=id).prefetch_related('product').valuews("id","quantity",type=Value('2'),date=F('sales_date'),unit=F('product__price'))
+            sales = Sales.objects.filter(product_id=id).prefetch_related('product').valuews("id","quantity",type=Value('2'),date=F('sales_date'),unit=F('product__price'))
             queryset = purchase.union(sales).order_by(F("date"))
             serializer = InventorySerializer(queryset,many=True)
         return Response(serializer.data,status.HTTP_200_OK)
