@@ -1,6 +1,14 @@
 from rest_framework import serializers
 from .models import Product, Purchase, Sales
 
+class InventorySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    unit = serializers.IntegerField()
+    quantity = serializers.IntegerField
+    type = serializers.IntegerField()
+    date = serializers.DateTimeField()
+
+
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product

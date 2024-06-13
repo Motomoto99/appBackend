@@ -5,10 +5,28 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
-# from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet
 from .models import Product
-from .serializers import ProductSerializer,Purchaseserializer,SaleSerializer
+from django.db.models import F, Value,Sum
+from django.db.models.functions import Coalesce
+from api.inventory.exception import BusinessException
+from .serializers import InventorySerializer,ProductSerializer,Purchaseserializer,SaleSerializer
 from rest_framework import status
+
+class InventoryView(APIView):
+    #仕入れ・売上情報を取得する
+    def get(self, request,id=None,format=None):
+        if id is None:
+            #件数が多くなるので商品IDは必ず指定する
+            return Response(serializer.data, status.HTTP_400_BAD_REQUEST)
+        else:
+            #UNIONするために、それぞれフィールド名を再定義している
+            purchase = Purchase.objects.filter(product_id=id).prefetch_related('product').valuews("id","quantity",type=Value('1'),date=F('purchase_date'),unit=F('product__price'))
+            salse = Sales.objects.filter(product_id=id).prefetch_related('product').valuews("id","quantity",type=Value('2'),date=F('sales_date'),unit=F('product__price'))
+            queryset = purchase.union(sales).order_by(F("date"))
+            serializer = InventorySerializer(queryset,many=True)
+        return Response(serializer.data,status.HTTP_200_OK)
+
 
 class ProductView(APIView):
     """
@@ -50,6 +68,15 @@ class ProductView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status.HTTP_200_OK)
+    
+    def delete(self, request, id, format=None):
+        product = self.get_object(id)
+        product.delete()
+        return Response(status = status.HTTP_200_OK)
+
+class ProductModelViewSet(ModelViewSet):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
 
 class PurchaseView(APIView):
     def post(self, request, format=None):
@@ -68,6 +95,14 @@ class SalesView(APIView):
         """
         serializer = SaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        # 在庫が売る分の数量を超えないかチェック
+        purchase = Purchase.objects.filter(product_id=request.data['product']).aggregate(quantity_sum=Coalesce(Sum('quantity'),0))#在庫テーブルのレコードを取得
+        sales = Sales.objects.filter(product_id=request.data['product']).aggregate(quantity_sum=Coalesce(Sum('quantity'),0))#卸しテーブルのレコードを取得
+
+        # 在庫が売る分の数量を超えている場合はエラーレスポンスを返す
+        if purchase['quantity_sum'] < (sales['quantity_sum'] + int(request.data['quantity'])):
+            raise BusinessException('在庫数量を超過することはできません')
+
         serializer.save()
         return Response(serializer.data, status.HTTP_201_CREATED)
     
