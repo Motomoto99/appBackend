@@ -141,3 +141,10 @@ LOGGING = {
         }
     }
 }
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES':(
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PREMISSION_CLASSES':['rest_framework.permissions.IsAuthenticated']
+}
