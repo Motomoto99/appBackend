@@ -150,8 +150,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PREMISSION_CLASSES':['rest_framework.permissions.IsAuthenticated']
 }
 
+# クッキーの有効期限に使用する
+COOKIE_TIME = 60 * 60 * 12
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(MINUTES=15),
+    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=30),
     'UPDATE_LAST_LOGIN': True,
 }
